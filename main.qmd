@@ -7,194 +7,305 @@ editor: visual
 ## Philosophical Foundations
 
 * In scientific research we often deal with questions, problems, or claims.
+  * Are there infinitely many twin primes?
+  * Is an electron a wave or a particle?
+  * Why are left-handed stereoisomers of amino acids dominant in nature even though their synthesis normally results in an equal mixture of the right- and left-handed molecular forms?
+  * To what extent did trade networks drive the collapse of Bronze Age civilizations around 1200 BCE?
+  * What causes scurvy?
 
 * The main question being answered, problem being solved, or claim being verified or falsified should guide the decisions in research, including all decisions regarding data collection and analysis.
 
 * So first we need to write down the specific research question, claim, or statement of the problem that our research is going to address.
 
-* We need to have a theory of randomness: in what ways can random chance contributre to our conclusions?
+* We need to have a theory of randomness: in what ways can random chance contribute to our conclusions?
 
 * Summary statistics loses information regarding individuals. researchers often incorrectly then use them to infer information about individuals.
 
-## Data
+* Exploratory vs. Confirmatory Research
+
+### Study Design
+
+* You should design your study based on your research question, problem, or claim.
+
+* Your study design determines what question you can answer or what conclusions you can draw.
+
+## From Measurement to Data
+
+* Measurement allows you to capture some aspect of the phenomenon you are interested in studying.
+
+* The outcome of measurement is data!
+
+* Types of Measurement: 1. Nominal/Categorical, 2. Ordinal , 3. Interval, 4. Ratio
+  * Reading: S. S. Stevens, On the Theory of Scales of Measurement. Science 103, 677-680 (1946).
+
+* We are going to work with the Providence Corpus of the CHILDES database.
+
+  * Read how this dataset 
 
 ```{r Load-Package}
 library(childesr)
 library(tidyverse)
-library(feather)
 ```
 
+The `childesr` package has two important functions we are going to use: `get_tokens` that returns sepcific tokens produced by parents or children in the CHILDES corpus collection. The function `get_utterances` returns a dataframe similar to `get_tokens` but one column is utterances rather than tokens.
+
 ```{r Import-Data, eval=FALSE}
-Providence_tokens <- get_tokens(collection = "Eng-NA", 
-                                language = "eng", 
-                                corpus = "Providence", 
-                                token = "*")
+#Providence_tokens <- get_tokens(collection = "Eng-NA", 
+#                                language = "eng", 
+#                                corpus = "Providence", 
+#                                token = "*")
 
-Providence_utterances <- get_utterances(collection = "Eng-NA", 
-                                        language = "eng", 
-                                        corpus = "Providence")
+#Providence_utterances <- get_utterances(collection = "Eng-NA", 
+#                                        language = "eng", 
+#                                        corpus = "Providence")
 
-saveRDS(Providence_utterances, "providence_utterances.rds")
+#saveRDS(Providence_utterances, "providence_utterances.rds")
 ```
 
 ```{r Load-Data}
 Providence_utterances <- readRDS("providence_utterances.rds")
 ```
 
-## Visualization and Descriptions
+| Scale | Key property | Example variables | Permissible statistics |
+|---|---|---|---|
+| Nominal | Equality / inequality only | `speaker_role`, `target_child_sex`, `type` | Mode, Frequency, relative frequency, entropy |
+| Ordinal | Rank order; unequal intervals | `age_group` (derived) | Median, IQR |
+| Interval | Equal intervals; arbitrary zero | `age_z` (z-scored age) | Mean, Standard Deviation |
+| Ratio | Equal intervals; absolute zero | `target_child_age`, `num_tokens` | Mean, geometric mean, variance, SD, CV |
 
-### Discrete
+## Description and Visualization of Data
 
-```{r}
+* The goal of visualization is to figure out what is going on with the data
+
+* The proper visualization and description of the data relies on what types of measurement you used and what kinds of comparisons you want to have
+
+### Nominal Scale
+
+On the nominal scale, numbers or labels function purely as names. Stevens (1946) notes that the only empirical operation permissible is the determination of equality or inequality — we can say two items belong to the same or different categories, but nothing more. Any one-to-one substitution of labels leaves all permissible statistics unchanged. Appropriate statistics are the mode, relative frequencies, and entropy.
+
+In the Providence corpus, child sex, speaker role, and utterance type are nominal variables.
+
+```{r nominal-bar-sex}
 Providence_utterances %>%
-  ggplot(aes(x=target_child_sex)) + 
+  ggplot(aes(x = target_child_sex)) +
   geom_bar() +
   labs(x = "Target Child Sex", y = "Count") +
   scale_y_continuous(labels = scales::comma) +
   theme_classic()
 ```
 
-```{r}
+```{r nominal-bar-role}
 Providence_utterances %>%
-  ggplot(aes(x=fct_infreq(speaker_role))) + 
+  ggplot(aes(x = fct_infreq(speaker_role))) +
   geom_bar() +
   labs(x = "Speaker Role", y = "Count") +
   theme_classic()
 ```
 
-```{r}
+```{r nominal-bar-type}
 Providence_utterances %>%
-  ggplot(aes(x=type)) + 
+  ggplot(aes(x = type)) +
   geom_bar() +
-  labs(x = "Speaker Role", y = "Count") +
+  labs(x = "Utterance Type", y = "Count") +
   theme_classic()
 ```
 
-* Measure of Central Tendency: Mode -- The most frequently occurring value in a specific measurement.
+- Measure of Central Tendency: Mode -- The most frequently occurring category.
 
-```{r mode}
-which.max(table(Providence_utterances$target_child_sex))
+```{r nominal-mode}
+which.max(table(Providence_utterances$speaker_role))
 ```
 
-Relative Frequency
+- Relative Frequency
 
-```{r}
+```{r nominal-relfreq}
 Providence_utterances %>%
-  count(target_child_sex) %>%
+  count(speaker_role) %>%
   mutate(relative_freq = n / sum(n),
-         percent = relative_freq*100)
+         percent = relative_freq * 100)
 ```
 
+- Measure of Dispersion: Entropy -- How evenly observations are spread across categories.
 
-* Measure of Dispersion: Entropy
+$$H(X) = -\sum_{i=1}^{n} p(x_i) \log_2 p(x_i)$$
 
-* Definition of Entropy: $$H(X) = -\sum_{i=1}^{n} p(x_i) \log_2 p(x_i)$$
-
-```{r}
-Providence_utterances %>%
-  count(target_child_sex) %>%
-  mutate(relative_freq = n / sum(n),
-         entropy = -sum(relative_freq * log2(relative_freq)))
-```
-
-```{r}
+```{r nominal-entropy}
 Providence_utterances %>%
   count(speaker_role) %>%
   mutate(relative_freq = n / sum(n),
          entropy = -sum(relative_freq * log2(relative_freq)))
 ```
 
+### Ordinal Scale
 
-### Continuous
+The ordinal scale adds rank order: observations can be sorted from least to greatest, but the intervals between adjacent ranks need not be equal. Stevens (1946) notes that while we can say "A ranks higher than B," we cannot say by how much. Permissible statistics are those invariant under any monotonic transformation: the median and percentiles.
 
-```{r}
+We illustrate ordinal measurement by grouping child ages into ordered developmental stages.
+
+```{r ordinal-create}
+Providence_utterances <- Providence_utterances %>%
+  mutate(age_group = cut(target_child_age,
+                         breaks = c(0, 18, 30, 42, Inf),
+                         labels = c("12-18 mo", "19-30 mo", "31-42 mo", "43+ mo"),
+                         ordered = TRUE))
+```
+
+```{r ordinal-bar}
 Providence_utterances %>%
-  ggplot(aes(x=target_child_age)) + 
+  filter(!is.na(age_group)) %>%
+  ggplot(aes(x = age_group)) +
+  geom_bar() +
+  labs(x = "Age Group", y = "Count") +
+  theme_classic()
+```
+
+- Measure of Central Tendency: Median -- The category at the midpoint of the ranked distribution.
+
+```{r ordinal-median}
+Providence_utterances %>%
+  filter(!is.na(age_group)) %>%
+  summarise(median_rank = median(as.integer(age_group), na.rm = TRUE))
+```
+
+- Measure of Dispersion: Interquartile Range (IQR) -- The spread of the middle 50% of ranked observations.
+
+```{r ordinal-iqr}
+Providence_utterances %>%
+  filter(!is.na(age_group)) %>%
+  summarise(iqr = IQR(as.integer(age_group), na.rm = TRUE))
+```
+
+### Interval Scale
+
+Interval scales have equal units between successive values, but the zero point is arbitrary and does not indicate the complete absence of the quantity. Stevens (1946) uses temperature in Celsius as the canonical example: the difference between 10° and 20° equals that between 30° and 40°, but 0°C is not "no temperature," so ratio statements are meaningless. Permissible statistics are those invariant under linear transformations: the mean and standard deviation.
+
+The Providence corpus has no pure interval variable. Scores on rating scales or standardized tests are common interval measures in child language research. To illustrate, we standardize child age into z-scores, which centers the variable at zero and removes the ratio interpretation.
+
+```{r interval-zscore}
+Providence_utterances <- Providence_utterances %>%
+  mutate(age_z = (target_child_age - mean(target_child_age, na.rm = TRUE)) /
+                  sd(target_child_age, na.rm = TRUE))
+```
+
+```{r interval-histogram}
+Providence_utterances %>%
+  ggplot(aes(x = age_z)) +
+  geom_histogram(binwidth = 0.25) +
+  labs(x = "Standardized Child Age (z-score)", y = "Count") +
+  theme_classic()
+```
+
+- Measure of Central Tendency: Mean
+
+$$\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i$$
+
+```{r interval-mean}
+mean(Providence_utterances$age_z, na.rm = TRUE)
+```
+
+- Measure of Dispersion: Standard Deviation
+
+$$s = \sqrt{\frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2}$$
+
+```{r interval-sd}
+sd(Providence_utterances$age_z, na.rm = TRUE)
+```
+
+### Ratio Scale
+
+The ratio scale has all the properties of the interval scale plus an absolute zero that marks the genuine absence of the quantity. Because the zero is non-arbitrary, ratio statements are meaningful: 20 tokens is twice as many as 10 tokens. Stevens (1946) notes that most physical measurements — length, weight, duration — are ratio scales. Permissible statistics include all of the above plus the geometric mean and coefficient of variation.
+
+In the Providence corpus, `target_child_age` (months from birth) and token counts are ratio variables.
+
+```{r ratio-histogram}
+Providence_utterances %>%
+  ggplot(aes(x = target_child_age)) +
   geom_histogram(binwidth = 1) +
   labs(x = "Target Child Age (months)", y = "Count") +
   theme_classic()
 ```
 
-```{r boxplot}
+```{r ratio-boxplot}
 ggplot(Providence_utterances, aes(target_child_sex, target_child_age)) +
   geom_boxplot() +
-  labs(x = "Child Sex", y = "Child Age") +
+  labs(x = "Child Sex", y = "Child Age (months)") +
   theme_classic()
 ```
 
-
-```{r violin-plot}
+```{r ratio-violin}
 ggplot(Providence_utterances, aes(target_child_sex, target_child_age)) +
   geom_violin() +
-  labs(x = "Child Sex", y = "Child Age") +
+  labs(x = "Child Sex", y = "Child Age (months)") +
   theme_classic()
 ```
 
-```{r}
-ggplot(Providence_utterances, aes(target_child_sex, num_tokens)) +
-  geom_jitter(width = 0.1)
+- Measure of Central Tendency: Mean
+
+$$\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i$$
+
+```{r ratio-mean}
+mean(Providence_utterances$target_child_age, na.rm = TRUE)
 ```
 
-```{r}
-Providence_utterances %>%
-  group_by(target_child_age) %>%
-  summarise(sum_tokens = sum(num_tokens))
+- Measure of Central Tendency: Geometric Mean -- Appropriate for ratio data; less sensitive to extreme values.
+
+$$\bar{x}_g = \exp\!\left(\frac{1}{n}\sum_{i=1}^{n} \ln x_i\right)$$
+
+```{r ratio-geomean}
+exp(mean(log(Providence_utterances$num_tokens[Providence_utterances$num_tokens > 0]),
+         na.rm = TRUE))
 ```
 
-```{r}
-Providence_utterances %>%
-  group_by(speaker_role, target_child_sex) %>%
-  summarise(sum_tokens = sum(num_tokens)) %>%
-  ggplot(aes(target_child_age, sum_tokens)) +
-  geom_point() +
-  labs(x = "Child Age", y = "Sum Tokens") +
-  theme_classic()
+- Measure of Dispersion: Variance
+
+$$s^2 = \frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2$$
+
+```{r ratio-variance}
+var(Providence_utterances$target_child_age, na.rm = TRUE)
 ```
 
-```{r}
-ggplot(Providence_utterances, aes(x=num_tokens, y=num_morphemes)) +
-  geom_point() +
-  theme_classic()
+- Measure of Dispersion: Standard Deviation
+
+$$s = \sqrt{\frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2}$$
+
+```{r ratio-sd}
+sd(Providence_utterances$target_child_age, na.rm = TRUE)
 ```
 
+- Measure of Dispersion: Coefficient of Variation -- The ratio of standard deviation to mean; meaningful only for ratio scales where zero is absolute.
 
+$$CV = \frac{s}{\bar{x}}$$
 
-```{r}
-cor(Providence_utterances$num_tokens, Providence_utterances$num_morphemes, use = "complete.obs")
-```
-
-
-```{r}
-sum_tokens_by_age <-
-  Providence_utterances %>%
-  group_by(target_child_age) %>%
-  summarise(sum_tokens = sum(num_tokens))
-```
-
-```{r}
-ggplot(sum_tokens_by_age, aes(target_child_age, sum_tokens)) +
-  geom_point() +
-  labs(x = "Child Age", y = "Sum Tokens") +
-  theme_classic()
+```{r ratio-cv}
+sd(Providence_utterances$target_child_age, na.rm = TRUE) /
+  mean(Providence_utterances$target_child_age, na.rm = TRUE)
 ```
 
 ## Models
 
-* Models embody all your assumptions about what you are studying.
+- Models embody all your assumptions about what you are studying.
 
-* What are the entities involved?
+- What are the entities involved?
 
-* How are they related to each other? What affects what? in what way? What causes what?
+- How are they related to each other? What affects what? in what way? What causes what?
 
-* Mathematics helps us be very precise about these.
+- Mathematics helps us be very precise about these.
 
-* Regression is a method of estimating the parameters of your model.
+- Regression is a method of estimating the parameters of your model.
 
-```{r}
-intercept_only_model <- lm(sum_tokens ~ 1 , data=sum_tokens_by_age)
+```{r intercept-only-Model}
+intercept_only_model <- lm(
+  formula = sum_tokens ~ 1 , 
+  data=sum_tokens_by_age)
 
 summary(intercept_only_model)
 ```
+
+### Prediction and Error
+
+- Mean Squared Error and Root Mean Squared Error
+
+### Linear Regression
 
 ```{r}
 ggplot(sum_tokens_by_age, aes(x = target_child_age, y = sum_tokens)) +
@@ -213,23 +324,39 @@ ggplot(sum_tokens_by_age, aes(x = target_child_age, y = sum_tokens)) +
 ```
 
 ```{r}
+mean(sum_tokens_by_age$sum_tokens)
+```
+
+```{r}
 ggplot(mapping = aes(x = residuals(intercept_only_model))) +
   geom_histogram(bins = 30) +
   labs(x = "Residual", y = "Count") +
   theme_classic()
 ```
 
+```{r intercept-slope-Model}
+intercept_slope_model <- lm(sum_tokens ~ target_child_age , data=sum_tokens_by_age)
 
+summary(intercept_slope_model)
+```
 
-### Prediction and Error
+```{r}
+ggplot(sum_tokens_by_age, aes(x = target_child_age, y = sum_tokens)) +
+  geom_point() +
+  geom_abline(yintercept = coef(intercept_slope_model)[1], slope= coef(intercept_slope_model)[2], color = "blue") + 
+  theme_classic()
+```
 
-* Mean Squared Error and Root Mean Squared Error
+```{r}
+intercept_val <- coef(intercept_only_model)[1]
 
-### Linear Regression
-
+ggplot(sum_tokens_by_age, aes(x = target_child_age, y = sum_tokens)) +
+  geom_segment(aes(xend = target_child_age, yend = intercept_val), color = "red", alpha = 0.5) +
+  geom_point() +
+  geom_abline(yintercept = intercept_val, color = "blue")
+```
 
 ### Nonlinear Regression
-
 
 ## Distributions
 
@@ -261,7 +388,6 @@ x <- seq(0, 1, length.out = 200)
 df <- data.frame(x, y = a * x + b)
 ggplot(df, aes(x, y)) + geom_line() + labs(x = "Value", y = "Density")
 ```
-
 
 ### Binomial Distribution
 
@@ -424,5 +550,3 @@ y <- eta * b * exp(b * x) * exp(-eta * (exp(b * x) - 1))
 df <- data.frame(x, y)
 ggplot(df, aes(x, y)) + geom_line() + labs(x = "Time", y = "Density")
 ```
-
-
